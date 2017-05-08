@@ -171,8 +171,8 @@ func WriteIpsChan(tgt io.Writer, src chan Patch) error {
 }
 
 // WriteIpsSlice writes a series of Patches to the given stream.
-func WriteIpsSlice(tgt *bufio.Writer, src []Patch) error {
-	_, err1 := tgt.WriteString("PATCH")
+func WriteIpsSlice(tgt io.Writer, src []Patch) error {
+	_, err1 := tgt.Write([]byte("PATCH"))
 
 	var err2 error
 	for _, p := range src {
@@ -181,7 +181,7 @@ func WriteIpsSlice(tgt *bufio.Writer, src []Patch) error {
 		}
 	}
 
-	_, err3 := tgt.WriteString("EOF")
+	_, err3 := tgt.Write([]byte("EOF"))
 
 	return errs.First("Formatting as IPS: ", err1, err2, err3)
 }
