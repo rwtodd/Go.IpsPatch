@@ -155,8 +155,8 @@ func ReadIps(ips *bufio.Reader) (chan Patch, chan error) {
 }
 
 // WriteIpsChan writes a series of Patches to the given stream.
-func WriteIpsChan(tgt *bufio.Writer, src chan Patch) error {
-	_, err1 := tgt.WriteString("PATCH")
+func WriteIpsChan(tgt io.Writer, src chan Patch) error {
+	_, err1 := tgt.Write([]byte("PATCH"))
 
 	var err2 error
 	for p := range src {
@@ -165,7 +165,7 @@ func WriteIpsChan(tgt *bufio.Writer, src chan Patch) error {
 		}
 	}
 
-	_, err3 := tgt.WriteString("EOF")
+	_, err3 := tgt.Write([]byte("EOF"))
 
 	return errs.First("Formatting as IPS: ", err1, err2, err3)
 }
