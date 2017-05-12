@@ -3,7 +3,6 @@ package ips
 import (
 	"testing"
 	"bytes"
-	"bufio"
 )
 
 var knownIps = [...]byte{
@@ -17,8 +16,7 @@ var knownIps = [...]byte{
 // TestRecreate tries to recreate a known-good ips patch
 func TestRecreate(t *testing.T) {
 	rdr := bytes.NewReader(knownIps[:])
-	brdr := bufio.NewReader(rdr)
-	pchan, echan := ReadIps(brdr)
+	pchan, echan := ReadIps(rdr)
 
 	var wtr bytes.Buffer
 	err := WriteIpsChan(&wtr,pchan)

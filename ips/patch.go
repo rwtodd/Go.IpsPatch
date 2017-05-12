@@ -3,7 +3,6 @@
 package ips
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -95,17 +94,33 @@ func NewRlePatch(loc uint32, l uint16, val byte) Patch {
 }
 
 // parseFile reads an entire patch file, pushing patches into a channel.
-func parseFile(ips *bufio.Reader, out chan Patch, echan chan error) {
-	var err error
-	read1 := func() int {
-		var v byte
+func parseFile(ips io.Reader, out chan Patch, echan chan error) {
+	var (
+		err  error
+		buff [4]byte
+	)
+
+	read1 := func() byte {
 		if err == nil {
-			v, err = ips.ReadByte()
+			_, err = ips.Read(buff[:1])
 		}
-		return int(v)
+		return buff[0]
 	}
-	read2 := func() int { return (read1() << 8) | read1() }
-	read3 := func() int { return (read2() << 8) | read1() }
+
+	read2 := func() uint16 {
+		if err == nil {
+			_, err = io.ReadFull(ips, buff[:2])
+		}
+		return binary.BigEndian.Uint16(buff[:2])
+	}
+
+	read3 := func() uint32 {
+		if err == nil {
+			buff[0] = 0
+			_, err = io.ReadFull(ips, buff[1:])
+		}
+		return binary.BigEndian.Uint32(buff[:])
+	}
 
 	defer close(out)
 	defer close(echan)
@@ -122,15 +137,15 @@ func parseFile(ips *bufio.Reader, out chan Patch, echan chan error) {
 		plen := read2()
 		if plen == 0 { // RLE patch
 			plen = read2()
-			val := byte(read1())
+			val := read1()
 			if err == nil {
-				out <- NewRlePatch(uint32(offs), uint16(plen), val)
+				out <- NewRlePatch(offs, plen, val)
 			}
 		} else { // File bytes patch
 			buf := make([]byte, plen)
 			_, err = io.ReadFull(ips, buf)
 			if err == nil {
-				out <- NewBytePatch(uint32(offs), buf)
+				out <- NewBytePatch(offs, buf)
 			}
 		}
 
@@ -148,7 +163,7 @@ func parseFile(ips *bufio.Reader, out chan Patch, echan chan error) {
 // puts them on a channel which it returns to the caller. An
 // error channel is also returned, which can be read once the
 // patch channel is empty.
-func ReadIps(ips *bufio.Reader) (chan Patch, chan error) {
+func ReadIps(ips io.Reader) (chan Patch, chan error) {
 	pchan, echan := make(chan Patch, 100), make(chan error, 1)
 	go parseFile(ips, pchan, echan)
 	return pchan, echan
